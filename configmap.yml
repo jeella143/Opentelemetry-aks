@@ -29,6 +29,20 @@ data:
           - container
       
     processors:
+      attributes:
+        actions:
+        - key: "ApplicationName"
+        ## Replace below <> braces with the your application name
+          value: "opentelemetry-collector"
+          action: insert
+        - key: "ApplicationVersion"
+        ## Replace below <> braces with the your application version
+          value: "0.104.0"
+          action: insert
+        - key: "EnvironmentName"
+        ## Replace below <> braces with the your environment name
+          value: "dev"
+          action: insert
       batch:
         send_batch_max_size: 1000
         send_batch_size: 100
