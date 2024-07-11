@@ -19,6 +19,7 @@ spec:
         volumeMounts:
          - name: otel-collector-config-vol
            mountPath: /etc/otelcol-contrib/otel-collector.yml
+           subPath: otel-collector.yml
         env:
         - name: K8S_NODE_NAME
           valueFrom:
