@@ -3,21 +3,12 @@ kind: ConfigMap
 metadata:
   name: otel-collector-config
 data:
-  otel-collector.yml:|
+  otel-collector.yml: |
     receivers:
       otlp:
         protocols:
           grpc:
           http:
-      hostmetrics:
-        collection_interval: 10s
-        scrapers:
-          cpu:
-          load:
-          memory:
-          disk:
-          filesystem:
-          network:
       kubeletstats:
         collection_interval: 10s
         auth_type: 'serviceAccount'
@@ -27,7 +18,7 @@ data:
           - node
           - pod
           - container
-      
+
     processors:
       attributes:
         actions:
@@ -47,7 +38,7 @@ data:
         send_batch_max_size: 1000
         send_batch_size: 100
         timeout: 10s
-    
+
       k8sattributes:
         auth_type: 'serviceAccount'
         passthrough: false
@@ -62,7 +53,7 @@ data:
 
     exporters:
       debug:
-        verbosity: detailed  
+        verbosity: detailed
 
       # This defines a Prometheus remote write exporter. It sends metrics data to a Prometheus server.
       prometheusremotewrite:
@@ -85,7 +76,7 @@ data:
     service:
       pipelines:
         metrics:
-          receivers: [otlp, kubeletstats, hostmetrics]
+          receivers: [otlp, kubeletstats]
           processors: [batch, k8sattributes]
           exporters: [debug]
         traces:
