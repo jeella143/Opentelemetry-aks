@@ -1,48 +1,84 @@
----
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: collector-config
+  name: otel-collector-config
 data:
-  collector.yaml: |
+  otel-collector.yml:|
     receivers:
       otlp:
-        protocols: 
+        protocols:
           grpc:
-
+          http:
+      hostmetrics:
+        collection_interval: 10s
+        scrapers:
+          cpu:
+          load:
+          memory:
+          disk:
+          filesystem:
+          network:
+      kubeletstats:
+        collection_interval: 10s
+        auth_type: 'serviceAccount'
+        endpoint: '${env:K8S_NODE_NAME}:10250'
+        insecure_skip_verify: true
+        metric_groups:
+          - node
+          - pod
+          - container
+      
     processors:
+      batch:
+        send_batch_max_size: 1000
+        send_batch_size: 100
+        timeout: 10s
+    
+      k8sattributes:
+        auth_type: 'serviceAccount'
+        passthrough: false
+        extract:
+          metadata:
+            - k8s.pod.name
+            - k8s.namespace.name
+            - k8s.node.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.pod.start_time
 
     exporters:
-      logging:
+      debug:
+        verbosity: detailed  
+
+      # This defines a Prometheus remote write exporter. It sends metrics data to a Prometheus server.
+      prometheusremotewrite:
+        endpoint: "http://prometheus:9090/api/v1/write"  # Sets the endpoint of the Prometheus server
+        resource_to_telemetry_conversion:
+          enabled: true # Convert resource attributes to metric labels
+
+      # This defines an exporter for Tempo backend. It sends trace data to a Tempo instance.
+      otlp/tempo:
+        endpoint: "http://tempo:4317"  # Sets the endpoint of the Tempo server
+
+        # TLS configuration for the Tempo exporter
+        tls:
+          insecure: true  # Disables TLS certificate verification (not recommended for production)
+
+      # This defines an exporter for Loki. It sends log data to a Loki server.
+      loki:
+        endpoint: "http://loki:3100/loki/api/v1/push"  # Sets the endpoint of the Loki server
 
     service:
       pipelines:
+        metrics:
+          receivers: [otlp, kubeletstats, hostmetrics]
+          processors: [batch, k8sattributes]
+          exporters: [debug]
         traces:
           receivers: [otlp]
-          processors: []
-          exporters: [logging]
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: agent-config
-data:
-  agent.yaml: |
-    receivers:
-      otlp:
-        protocols: 
-          grpc:
-
-    processors:
-
-    exporters:
-      otlp:
-        endpoint: "opentelemetrycollector.default.svc.cluster.local:4317"
-        insecure: true
-
-    service:
-      pipelines:
-        traces:
+          processors: [batch]
+          exporters: [debug]
+        logs:
           receivers: [otlp]
-          processors: []
-          exporters: [otlp]
+          processors: [batch]
+          exporters: [debug]
