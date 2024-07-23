@@ -45,7 +45,7 @@ data:
     service:
       pipelines:
         metrics:
-          receivers: [otlp, k8s_cluster]
+          receivers: [otlp, k8s_cluster, k8sobjects]
           processors: [batch]
           exporters: [debug]
         traces:
