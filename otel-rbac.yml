@@ -24,6 +24,7 @@ rules:
       - nodes/stats
       - resourcequotas
       - services
+      - nodes/proxy
     verbs:
       - get
       - list
