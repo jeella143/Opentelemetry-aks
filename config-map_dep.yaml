@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: otel-collector-config
+data:
+  otel-collector.yml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+          http:
+      kubeletstats:
+        collection_interval: 10s
+        auth_type: 'serviceAccount'
+        endpoint: '${env:K8S_NODE_NAME}:10250'
+        insecure_skip_verify: true
+        metric_groups:
+          - node
+          - pod
+          - container
+
+    processors:
+      attributes:
+        actions:
+        - key: "ApplicationName"
+        ## Replace below <> braces with the your application name
+          value: "opentelemetry-collector"
+          action: insert
+        - key: "ApplicationVersion"
+        ## Replace below <> braces with the your application version
+          value: "0.104.0"
+          action: insert
+        - key: "EnvironmentName"
+        ## Replace below <> braces with the your environment name
+          value: "dev"
+          action: insert
+      batch:
+        send_batch_max_size: 1000
+        send_batch_size: 100
+        timeout: 10s
+
+      k8sattributes:
+        auth_type: 'serviceAccount'
+        passthrough: false
+        extract:
+          metadata:
+            - k8s.pod.name
+            - k8s.namespace.name
+            - k8s.node.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.pod.start_time
+
+    exporters:
+      debug:
+        verbosity: detailed
+
+      # This defines a Prometheus remote write exporter. It sends metrics data to a Prometheus server.
+      prometheusremotewrite:
+        endpoint: "http://prometheus:9090/api/v1/write"  # Sets the endpoint of the Prometheus server
+        resource_to_telemetry_conversion:
+          enabled: true # Convert resource attributes to metric labels
+
+      # This defines an exporter for Tempo backend. It sends trace data to a Tempo instance.
+      otlp/tempo:
+        endpoint: "http://tempo:4317"  # Sets the endpoint of the Tempo server
+
+        # TLS configuration for the Tempo exporter
+        tls:
+          insecure: true  # Disables TLS certificate verification (not recommended for production)
+
+      # This defines an exporter for Loki. It sends log data to a Loki server.
+      loki:
+        endpoint: "http://loki:3100/loki/api/v1/push"  # Sets the endpoint of the Loki server
+
+    service:
+      pipelines:
+        metrics:
+          receivers: [otlp, kubeletstats]
+          processors: [batch, k8sattributes]
+          exporters: [debug]
+        traces:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          processors: [batch]
+          exporters: [debug]
