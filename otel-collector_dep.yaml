@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: DaemonSet
+kind: Deployment
 metadata:
   name: collector-dep
 spec:
@@ -11,6 +11,7 @@ spec:
       labels:
         app: collector-dep
     spec:
+      replicas: 1
       serviceAccountName: collector-sa  # Specify the ServiceAccount
       containers:
       - name: collector-dep
