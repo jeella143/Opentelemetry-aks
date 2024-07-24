@@ -6,42 +6,71 @@ data:
   otel-collector.yml: |
     receivers:
       k8s_cluster:
+        auth_type: 'serviceAccount'
         collection_interval: 10s
+        node_conditions_to_report: [ "Ready", "MemoryPressure", "DiskPressure", "PIDPressure", "NetworkUnavailable" ]
+        allocatable_types_to_report: [ "cpu","memory" ]
+        metrics:
+          k8s.node.condition:
+            enabled: true
+          k8s.pod.status_reason:
+            enabled: true
+        resource_attributes:
+          k8s.pod.qos_class:
+            enabled: true
+          k8s.container.status.last_terminated_reason
+            enabled: true
+          os.type:
+          enabled: true
       k8sobjects:
         objects:
           - name: pods
             mode: pull
           - name: events
             mode: watch
-
+          - name: nodes
+            mode: pull
+          - name: persistentvolumes
+            mode: pull
+          - name: serviceaccounts
+            mode: pull
+          - name: services
+            mode: pull
+          - name: daemonsets
+            mode: pull
+          - name: deployments
+            mode: pull
+          - name: horizontalpodautoscalers
+            mode: pull
+ 
     processors:
       batch:
         send_batch_max_size: 1000
         send_batch_size: 100
         timeout: 10s
-
+ 
     exporters:
       debug:
         verbosity: detailed
-
+ 
       # This defines a Prometheus remote write exporter. It sends metrics data to a Prometheus server.
       prometheusremotewrite:
         endpoint: "http://prometheus:9090/api/v1/write"  # Sets the endpoint of the Prometheus server
         resource_to_telemetry_conversion:
           enabled: true # Convert resource attributes to metric labels
-
+ 
       # This defines an exporter for Tempo backend. It sends trace data to a Tempo instance.
       otlp/tempo:
         endpoint: "http://tempo:4317"  # Sets the endpoint of the Tempo server
-
+ 
         # TLS configuration for the Tempo exporter
         tls:
           insecure: true  # Disables TLS certificate verification (not recommended for production)
-
+ 
       # This defines an exporter for Loki. It sends log data to a Loki server.
       loki:
         endpoint: "http://loki:3100/loki/api/v1/push"  # Sets the endpoint of the Loki server
-
+ 
     service:
       pipelines:
         metrics:
@@ -56,3 +85,4 @@ data:
           receivers: [otlp]
           processors: [batch]
           exporters: [debug]
+ 
